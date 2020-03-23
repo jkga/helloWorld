@@ -1,0 +1,13 @@
+.DS_Store
+.expo
+.expo-shared
+node_modules
+__tests__
+web-build
+android
+ios
+env.json
+facebook.json
+firebase.json
+
+
