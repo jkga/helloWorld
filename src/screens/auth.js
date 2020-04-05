@@ -5,6 +5,7 @@ import FirebaseAuth from '../services/auth/firebaseAuth'
 import FacebookAuth from '../services/auth/facebookAuth'
 import FirebaseDBService from '../services/firebase/account'
 import useGlobalState from '../stateManager/index'
+import People from './tracker/assets/img/people.png'
 
 import {
   Layout,
@@ -13,7 +14,7 @@ import {
   Icon,
   Spinner,
 } from "@ui-kitten/components"
-import { Alert, YellowBox } from 'react-native'
+import { Alert, YellowBox, Image } from 'react-native'
 
 
 const snackBar = (isVisible, callback, data = {}) => {
@@ -47,12 +48,6 @@ export default ({navigation}) => {
   const [loginState, setLoginState] = useGlobalState('loginState')
   const [profileData, setProfileData] = useGlobalState('profileData')
 
-
-  const loginSuccess = () => {
-    setLoggedInStatus (true)
-    setSnackSuccessVisibility (true)
-    navigation.navigate ('H')
-  }
 
   useEffect(() => {
       if(loginState === 'loading' && isLoggedIn === false) {
@@ -89,12 +84,12 @@ export default ({navigation}) => {
   })
 
   return(<Layout style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+    <Image style={{width: 300, height: 300}} resizeMode="contain" source={People}/>
     <Text category='h1'>HelloWorld</Text>
     <Text style={{textAlign: 'center', padding: 20}}>
-      Lorem ipsum dolor sit amet, consectetur adipiscing elit, 
-      sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.
-      Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. 
-      Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore
+      This mobile application aims to monitor physical human interaction by recording digitally all possible close human contacts and visited places 
+      with a very least minimum action and effort. This also aims to ensure that recording and tracing of all contacts wil be faster and more reliable 
+      than memory and written notes.
     </Text>
     <Layout style={{marginTop: 50, textAlign: 'center'}}>
       {(!isLoggedIn && (loginState === 'pending' || loginState === 'failed')) ? <Button onPress={() => setLoginState ('loading')} icon = {() => <Icon name='facebook' width={20} height={20}/>}>Login via facebook</Button> : <Text></Text>}
@@ -109,9 +104,10 @@ export default ({navigation}) => {
     </Layout>
     
 
-    {snackBar(isSnackSuccessVisible, () => {
-      setSnackSuccessVisibility (false)
-    },profileData)}
+    {/*snackBar(isSnackSuccessVisible, () => {
+      //setSnackSuccessVisibility (false)
+      navigation.navigate('AccountProfile')
+    },profileData)*/}
 
     {snackBarFailed(loginState === 'failed')}
 

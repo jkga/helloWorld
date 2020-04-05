@@ -14,15 +14,15 @@ export default (data) => {
     <Button style={style} size="tiny">CHECK</Button>
   );
 
-  const renderItemIcon = (style) => (
-    <Icon {...style} name='pin-outline' fill='orange'/>
-  );
+  const renderItemIcon = (item) => { console.log(item.type)
+    return(<Icon  name='pin-outline' fill='orange'/>)
+  }
 
   const renderItem = ({ item, index }) => (
     <ListItem
       title={`${item.title} ${index + 1}`}
       description={`${item.description} ${index + 1}`}
-      icon={renderItemIcon}
+      icon={ () => renderItemIcon (item)}
       accessory={renderItemAccessory}
     />
   )

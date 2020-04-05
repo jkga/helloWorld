@@ -1,4 +1,4 @@
-import React, { useState } from "react"
+import React, { useState, useEffect } from "react"
 
 import {
   View,
@@ -14,44 +14,30 @@ import {
   Icon,
   Card,
   TopNavigation,
-  OverflowMenu,
   Button,
   Spinner,
 } from "@ui-kitten/components"
 
 import { Flag } from 'react-native-svg-flagkit'
 import UserItem from '../components/user-item' 
-import LocationItem from '../components/location-item' 
+import Firebase from '../db/firebase'
+import FirebaseDBService from '../services/firebase/scan'
+import useGlobalState from '../stateManager/index'
+
+const FirebaseDB = new FirebaseDBService (Firebase)
 
 
-const data = new Array(20).fill({
+const data = new Array(3).fill({
   title: 'John Hey Doe',
   description: 'Manila, Caloocan, Philip[pines',
 })
 
-const dataLoc = new Array(20).fill({
+const dataLoc = new Array(3).fill({
   title: 'Manila, Caloocan, Philippines',
   description: '100 scanned person',
 })
 
 
-
-const recentScanCard = () => {
-  return (
-    <Card>
-      <Layout>
-        <Text category='h5'>
-          [123-456-36 , 123-456-8, John Hey Do...]
-        </Text>
-        <Text appearance='hint'>Recent Scan for the past few days</Text>
-      </Layout>
-      <Text>
-        The Maldives, officially the Republic of Maldives, is a small country in South Asia,
-        located in the Arabian Sea of the Indian Ocean.
-        It lies southwest of Sri Lanka and India, about 1,000 kilometres (620 mi) from the Asian continent
-      </Text>
-    </Card>)
-}
 
 const TopNav = () => {
   return (<Layout>
@@ -63,111 +49,140 @@ const TopNav = () => {
 }
 
 
-const filterMenuData = [
-  { title: 'Menu Item 1' },
-  { title: 'Menu Item 2' },
-  { title: 'Menu Item 3' },
-  { title: 'Menu Item 4' },
-];
-const FilterPopup = (data) => {
-  const [menuVisible, setMenuVisible] = useState(false);
-  const [selectedIndex, setSelectedIndex] = useState(null);
-
-  const onItemSelect = (index) => {
-    setSelectedIndex(index)
-    setMenuVisible(false)
-  }
-
-  const toggleMenu = () => {
-    setMenuVisible(!menuVisible);
-  }
-  return (
-    <OverflowMenu
-        data={data}
-        visible={menuVisible}
-        selectedIndex={selectedIndex}
-        onSelect={onItemSelect}
-        onBackdropPress={toggleMenu}
-        style={{textAlign: 'right'}}>
-        <Button onPress={toggleMenu} icon={() => <Icon name='arrow-ios-downward-outline' width={20} height={20}/>} size='tiny' status='primary'>
-          Filter
-        </Button>
-      </OverflowMenu>
-  )
-}
-
 YellowBox.ignoreWarnings([
   'VirtualizedLists should never be nested', // TODO: Remove when fixed
 ])
 
 
+
+
 export default () => {
-  const [selectedIndex, setSelectedIndex] = useState(0);
+  const [selectedIndex, setSelectedIndex] = useState(0)
+  const [isLoadingPeople, setIsLoadingPeople] = useState(false)
+  const [isLoadingPlaces, setIsLoadingPlaces] = useState(false)
+  const [isLoadMoreIconVisiblePeople, setIsLoadMoreIconVisiblePeople] = useState(true)
+  const [isLoadMoreIconVisiblePlaces, setIsLoadMoreIconVisiblePlaces] = useState(true)
+  const [scannedData, setScannedData] = useState([])
+  const [scannedDataPlaces, setScannedDataPlaces] = useState([])
+  const [scannedCurrentIndex, setScannedCurrentIndex] = useState('')
+  const [scannedCurrentPlaceIndex, setScannedCurrentPlaceIndex] = useState('')
+  const [profileData, setProfileData] = useGlobalState('profileData')
+  const [isListeningToRecentList, setisListeningToRecentList] = useState(false)
+  const LIMIT = 10
+
+  const getScanPlacesDataFromDB = (d) => {
+    console.log('getting scanned data from the list')
+    let t = d ? d : ''
+    FirebaseDB.getScansPlaces(profileData.email, t ,LIMIT).then(res => {
+      console.log('getting first page without filter')
+      console.log(res)
+      let t = !scannedDataPlaces.length ? res : [...scannedDataPlaces,...res]
+      setScannedDataPlaces (t)
+      setIsLoadingPlaces (false)
+      if(!res.length) setIsLoadMoreIconVisiblePlaces (false)
+    })
+  }
+
+  const getScanDataFromDB = (d='') => {
+    console.log('getting scanned data from the list by type')
+    let t = d ? d : ''
+    FirebaseDB.getScans(profileData.email, t ,LIMIT).then(res => {
+      console.log('getting first page by type')
+      console.log(res)
+      let t = !scannedDataPlaces.length ? res : [...scannedData,...res]
+      setScannedData (t)
+      setIsLoadingPeople(false)
+      if(!res.length) setIsLoadMoreIconVisiblePeople (false)
+    })
+  }
+
+  const loadMore = () => {
+    setIsLoadingPeople (true)
+    console.log('Loading more data')
+    console.log(scannedData)
+    if(!scannedData.length) return setIsLoadMoreIconVisiblePeople(false)
+
+    let d = Object.keys(scannedData[scannedData.length-1])[0]
+    console.log('setting cursor to', d)
+    setScannedCurrentIndex (d)
+    getScanDataFromDB (d)
+    
+  }
+
+  const loadMoreExcept = (type) => {
+    setIsLoadingPlaces (true)
+    console.log('Loading more places')
+    console.log(scannedDataPlaces)
+    if(!scannedDataPlaces.length) return setIsLoadMoreIconVisiblePlaces(false)
+
+    let d = Object.keys(scannedDataPlaces[scannedDataPlaces.length-1])[0]
+    console.log('setting cursor to', d)
+    setScannedCurrentPlaceIndex (d)
+    getScanPlacesDataFromDB (d)
+    
+  }
+
+
+  const emptyCard = () => {
+    return (
+      <Card style={{margin: 20}}>
+        <Text>
+          You do not have any previous scan. 
+        </Text>
+      </Card>)
+  }
+
+  useEffect(() => {
+    // get scanned data
+    getScanDataFromDB ()
+    getScanPlacesDataFromDB ()
+    
+  }, [])
+
+  if(!isListeningToRecentList) FirebaseDB.getScanRecentListener(profileData.email, (snapshot) => {
+    console.log('reading scanned data')
+    console.log(scannedData)
+    console.log('---xx-retrieving insert-ttss--')
+    setisListeningToRecentList (true)
+    let t =[JSON.parse(JSON.stringify(snapshot))]
+    /*setScannedData(prev => {
+      prev = [...t,...prev]
+      return prev
+    })*/
+  })
+
   return (
     <View style={{flex: 1}}>
       { TopNav () }
       <ScrollView>
         <TabView selectedIndex={selectedIndex} onSelect={setSelectedIndex}>
-          <Tab icon={() => <Icon name='activity-outline' width={20} height={20}/>}>
-            <Layout style={{padding: 30}}>
-                <Layout>
-                  <Text category='h6'>Most Recent</Text>
-                  <Text>Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.</Text>
-                </Layout>
-                <Layout style={{paddingTop: 20}}>
-                  {recentScanCard ()}
-                </Layout>
-
-                <Layout style={{flex: 1, flexDirection: 'row', alignItems: 'flex-start', marginTop: 15}}>
-                  <Text category='h6'>Countries</Text>
-                  <Icon name='pin-outline' width={20} height={20} fill='green'/>
-                </Layout>
-
-                <Layout style={{flex: 1, flexDirection: 'row', alignItems: 'flex-start', marginTop: 15}}>
-                    <Layout style={{width: 30}}><Flag id={'PH'} width={20} height={20}/></Layout>
-                    <Text appearance='hint' style={{width: 150}}>Philippines</Text>
-                    <Text category='label'>350</Text>
-                  </Layout>
-            </Layout>
-          </Tab>
-          <Tab title='Locations' name='Locations'>
+          <Tab title='People' name='People'>
             <Layout>
-              <Layout style={{flex: 1, flexDirection: 'row-reverse', alignment: 'right', textAlign: 'right', marginBottom: 10, padding: 20}}>
-                { FilterPopup (filterMenuData) }
+              <Layout>
+                { !scannedData.length ? emptyCard () : undefined}
               </Layout>
-              <Layout style={{flex: 1}}>
-                {LocationItem (dataLoc)}
-                <Spinner size='large'/>
+              <Layout style={{flex: 1, paddingTop: 20}}>
+                {UserItem(scannedData)}
+              </Layout>
+              <Layout style={{flex: 1, paddingTop: 20, alignItems: 'center'}}>
+                { isLoadMoreIconVisiblePeople ? (isLoadingPeople ? <Spinner size='small'/> :<Button appearance='ghost' status='info' onPress={()=> loadMore ()}>Load More</Button>) : undefined}
               </Layout>
             </Layout>
           </Tab>
 
-          <Tab title='People'>
+          <Tab title='Places' onSelect={()=> console.log('people selected')}>
             <Layout>
-              {/*UserItem (data)*/}
-              <Text>
-              Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium, totam rem aperiam, eaque ipsa quae ab illo inventore veritatis et quasi architecto beatae vitae dicta sunt explicabo. Nemo enim ipsam voluptatem quia voluptas sit aspernatur aut odit aut fugit, sed quia consequuntur magni dolores eos qui ratione voluptatem sequi nesciunt. Neque porro quisquam est, qui dolorem ipsum quia dolor sit amet, consectetur, adipisci velit, sed quia non numquam eius modi tempora incidunt ut labore et dolore magnam aliquam quaerat voluptatem. Ut enim ad minima veniam, quis nostrum exercitationem ullam corporis suscipit laboriosam, nisi ut aliquid ex ea commodi consequatur? Quis autem vel eum iure reprehenderit qui in ea voluptate velit esse quam nihil molestiae consequatur, vel illum qui dolorem eum fugiat quo voluptas nulla pariatur?
-              Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium, totam rem aperiam, eaque ipsa quae ab illo inventore veritatis et quasi architecto beatae vitae dicta sunt explicabo. Nemo enim ipsam voluptatem quia voluptas sit aspernatur aut odit aut fugit, sed quia consequuntur magni dolores eos qui ratione voluptatem sequi nesciunt. Neque porro quisquam est, qui dolorem ipsum quia dolor sit amet, consectetur, adipisci velit, sed quia non numquam eius modi tempora incidunt ut labore et dolore magnam aliquam quaerat voluptatem. Ut enim ad minima veniam, quis nostrum exercitationem ullam corporis suscipit laboriosam, nisi ut aliquid ex ea commodi consequatur? Quis autem vel eum iure reprehenderit qui in ea voluptate velit esse quam nihil molestiae consequatur, vel illum qui dolorem eum fugiat quo voluptas nulla pariatur?
-              Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium, totam rem aperiam, eaque ipsa quae ab illo inventore veritatis et quasi architecto beatae vitae dicta sunt explicabo. Nemo enim ipsam voluptatem quia voluptas sit aspernatur aut odit aut fugit, sed quia consequuntur magni dolores eos qui ratione voluptatem sequi nesciunt. Neque porro quisquam est, qui dolorem ipsum quia dolor sit amet, consectetur, adipisci velit, sed quia non numquam eius modi tempora incidunt ut labore et dolore magnam aliquam quaerat voluptatem. Ut enim ad minima veniam, quis nostrum exercitationem ullam corporis suscipit laboriosam, nisi ut aliquid ex ea commodi consequatur? Quis autem vel eum iure reprehenderit qui in ea voluptate velit esse quam nihil molestiae consequatur, vel illum qui dolorem eum fugiat quo voluptas nulla pariatur?
-              Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium, totam rem aperiam, eaque ipsa quae ab illo inventore veritatis et quasi architecto beatae vitae dicta sunt explicabo. Nemo enim ipsam voluptatem quia voluptas sit aspernatur aut odit aut fugit, sed quia consequuntur magni dolores eos qui ratione voluptatem sequi nesciunt. Neque porro quisquam est, qui dolorem ipsum quia dolor sit amet, consectetur, adipisci velit, sed quia non numquam eius modi tempora incidunt ut labore et dolore magnam aliquam quaerat voluptatem. Ut enim ad minima veniam, quis nostrum exercitationem ullam corporis suscipit laboriosam, nisi ut aliquid ex ea commodi consequatur? Quis autem vel eum iure reprehenderit qui in ea voluptate velit esse quam nihil molestiae consequatur, vel illum qui dolorem eum fugiat quo voluptas nulla pariatur?
-              Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium, totam rem aperiam, eaque ipsa quae ab illo inventore veritatis et quasi architecto beatae vitae dicta sunt explicabo. Nemo enim ipsam voluptatem quia voluptas sit aspernatur aut odit aut fugit, sed quia consequuntur magni dolores eos qui ratione voluptatem sequi nesciunt. Neque porro quisquam est, qui dolorem ipsum quia dolor sit amet, consectetur, adipisci velit, sed quia non numquam eius modi tempora incidunt ut labore et dolore magnam aliquam quaerat voluptatem. Ut enim ad minima veniam, quis nostrum exercitationem ullam corporis suscipit laboriosam, nisi ut aliquid ex ea commodi consequatur? Quis autem vel eum iure reprehenderit qui in ea voluptate velit esse quam nihil molestiae consequatur, vel illum qui dolorem eum fugiat quo voluptas nulla pariatur?
-              Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium, totam rem aperiam, eaque ipsa quae ab illo inventore veritatis et quasi architecto beatae vitae dicta sunt explicabo. Nemo enim ipsam voluptatem quia voluptas sit aspernatur aut odit aut fugit, sed quia consequuntur magni dolores eos qui ratione voluptatem sequi nesciunt. Neque porro quisquam est, qui dolorem ipsum quia dolor sit amet, consectetur, adipisci velit, sed quia non numquam eius modi tempora incidunt ut labore et dolore magnam aliquam quaerat voluptatem. Ut enim ad minima veniam, quis nostrum exercitationem ullam corporis suscipit laboriosam, nisi ut aliquid ex ea commodi consequatur? Quis autem vel eum iure reprehenderit qui in ea voluptate velit esse quam nihil molestiae consequatur, vel illum qui dolorem eum fugiat quo voluptas nulla pariatur?
-              Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium, totam rem aperiam, eaque ipsa quae ab illo inventore veritatis et quasi architecto beatae vitae dicta sunt explicabo. Nemo enim ipsam voluptatem quia voluptas sit aspernatur aut odit aut fugit, sed quia consequuntur magni dolores eos qui ratione voluptatem sequi nesciunt. Neque porro quisquam est, qui dolorem ipsum quia dolor sit amet, consectetur, adipisci velit, sed quia non numquam eius modi tempora incidunt ut labore et dolore magnam aliquam quaerat voluptatem. Ut enim ad minima veniam, quis nostrum exercitationem ullam corporis suscipit laboriosam, nisi ut aliquid ex ea commodi consequatur? Quis autem vel eum iure reprehenderit qui in ea voluptate velit esse quam nihil molestiae consequatur, vel illum qui dolorem eum fugiat quo voluptas nulla pariatur?
-              Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium, totam rem aperiam, eaque ipsa quae ab illo inventore veritatis et quasi architecto beatae vitae dicta sunt explicabo. Nemo enim ipsam voluptatem quia voluptas sit aspernatur aut odit aut fugit, sed quia consequuntur magni dolores eos qui ratione voluptatem sequi nesciunt. Neque porro quisquam est, qui dolorem ipsum quia dolor sit amet, consectetur, adipisci velit, sed quia non numquam eius modi tempora incidunt ut labore et dolore magnam aliquam quaerat voluptatem. Ut enim ad minima veniam, quis nostrum exercitationem ullam corporis suscipit laboriosam, nisi ut aliquid ex ea commodi consequatur? Quis autem vel eum iure reprehenderit qui in ea voluptate velit esse quam nihil molestiae consequatur, vel illum qui dolorem eum fugiat quo voluptas nulla pariatur?
-              Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium, totam rem aperiam, eaque ipsa quae ab illo inventore veritatis et quasi architecto beatae vitae dicta sunt explicabo. Nemo enim ipsam voluptatem quia voluptas sit aspernatur aut odit aut fugit, sed quia consequuntur magni dolores eos qui ratione voluptatem sequi nesciunt. Neque porro quisquam est, qui dolorem ipsum quia dolor sit amet, consectetur, adipisci velit, sed quia non numquam eius modi tempora incidunt ut labore et dolore magnam aliquam quaerat voluptatem. Ut enim ad minima veniam, quis nostrum exercitationem ullam corporis suscipit laboriosam, nisi ut aliquid ex ea commodi consequatur? Quis autem vel eum iure reprehenderit qui in ea voluptate velit esse quam nihil molestiae consequatur, vel illum qui dolorem eum fugiat quo voluptas nulla pariatur?Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium, totam rem aperiam, eaque ipsa quae ab illo inventore veritatis et quasi architecto beatae vitae dicta sunt explicabo. Nemo enim ipsam voluptatem quia voluptas sit aspernatur aut odit aut fugit, sed quia consequuntur magni dolores eos qui ratione voluptatem sequi nesciunt. Neque porro quisquam est, qui dolorem ipsum quia dolor sit amet, consectetur, adipisci velit, sed quia non numquam eius modi tempora incidunt ut labore et dolore magnam aliquam quaerat voluptatem. Ut enim ad minima veniam, quis nostrum exercitationem ullam corporis suscipit laboriosam, nisi ut aliquid ex ea commodi consequatur? Quis autem vel eum iure reprehenderit qui in ea voluptate velit esse quam nihil molestiae consequatur, vel illum qui dolorem eum fugiat quo voluptas nulla pariatur?
-              Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium, totam rem aperiam, eaque ipsa quae ab illo inventore veritatis et quasi architecto beatae vitae dicta sunt explicabo. Nemo enim ipsam voluptatem quia voluptas sit aspernatur aut odit aut fugit, sed quia consequuntur magni dolores eos qui ratione voluptatem sequi nesciunt. Neque porro quisquam est, qui dolorem ipsum quia dolor sit amet, consectetur, adipisci velit, sed quia non numquam eius modi tempora incidunt ut labore et dolore magnam aliquam quaerat voluptatem. Ut enim ad minima veniam, quis nostrum exercitationem ullam corporis suscipit laboriosam, nisi ut aliquid ex ea commodi consequatur? Quis autem vel eum iure reprehenderit qui in ea voluptate velit esse quam nihil molestiae consequatur, vel illum qui dolorem eum fugiat quo voluptas nulla pariatur?
-              Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium, totam rem aperiam, eaque ipsa quae ab illo inventore veritatis et quasi architecto beatae vitae dicta sunt explicabo. Nemo enim ipsam voluptatem quia voluptas sit aspernatur aut odit aut fugit, sed quia consequuntur magni dolores eos qui ratione voluptatem sequi nesciunt. Neque porro quisquam est, qui dolorem ipsum quia dolor sit amet, consectetur, adipisci velit, sed quia non numquam eius modi tempora incidunt ut labore et dolore magnam aliquam quaerat voluptatem. Ut enim ad minima veniam, quis nostrum exercitationem ullam corporis suscipit laboriosam, nisi ut aliquid ex ea commodi consequatur? Quis autem vel eum iure reprehenderit qui in ea voluptate velit esse quam nihil molestiae consequatur, vel illum qui dolorem eum fugiat quo voluptas nulla pariatur?
-              Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium, totam rem aperiam, eaque ipsa quae ab illo inventore veritatis et quasi architecto beatae vitae dicta sunt explicabo. Nemo enim ipsam voluptatem quia voluptas sit aspernatur aut odit aut fugit, sed quia consequuntur magni dolores eos qui ratione voluptatem sequi nesciunt. Neque porro quisquam est, qui dolorem ipsum quia dolor sit amet, consectetur, adipisci velit, sed quia non numquam eius modi tempora incidunt ut labore et dolore magnam aliquam quaerat voluptatem. Ut enim ad minima veniam, quis nostrum exercitationem ullam corporis suscipit laboriosam, nisi ut aliquid ex ea commodi consequatur? Quis autem vel eum iure reprehenderit qui in ea voluptate velit esse quam nihil molestiae consequatur, vel illum qui dolorem eum fugiat quo voluptas nulla pariatur?
-              Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium, totam rem aperiam, eaque ipsa quae ab illo inventore veritatis et quasi architecto beatae vitae dicta sunt explicabo. Nemo enim ipsam voluptatem quia voluptas sit aspernatur aut odit aut fugit, sed quia consequuntur magni dolores eos qui ratione voluptatem sequi nesciunt. Neque porro quisquam est, qui dolorem ipsum quia dolor sit amet, consectetur, adipisci velit, sed quia non numquam eius modi tempora incidunt ut labore et dolore magnam aliquam quaerat voluptatem. Ut enim ad minima veniam, quis nostrum exercitationem ullam corporis suscipit laboriosam, nisi ut aliquid ex ea commodi consequatur? Quis autem vel eum iure reprehenderit qui in ea voluptate velit esse quam nihil molestiae consequatur, vel illum qui dolorem eum fugiat quo voluptas nulla pariatur?
-                Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium, totam rem aperiam, eaque ipsa quae ab illo inventore veritatis et quasi architecto beatae vitae dicta sunt explicabo. Nemo enim ipsam voluptatem quia voluptas sit aspernatur aut odit aut fugit, sed quia consequuntur magni dolores eos qui ratione voluptatem sequi nesciunt. Neque porro quisquam est, qui dolorem ipsum quia dolor sit amet, consectetur, adipisci velit, sed quia non numquam eius modi tempora incidunt ut labore et dolore magnam aliquam quaerat voluptatem. Ut enim ad minima veniam, quis nostrum exercitationem ullam corporis suscipit laboriosam, nisi ut aliquid ex ea commodi consequatur? Quis autem vel eum iure reprehenderit qui in ea voluptate velit esse quam nihil molestiae consequatur, vel illum qui dolorem eum fugiat quo voluptas nulla pariatur?
-                Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium, totam rem aperiam, eaque ipsa quae ab illo inventore veritatis et quasi architecto beatae vitae dicta sunt explicabo. Nemo enim ipsam voluptatem quia voluptas sit aspernatur aut odit aut fugit, sed quia consequuntur magni dolores eos qui ratione voluptatem sequi nesciunt. Neque porro quisquam est, qui dolorem ipsum quia dolor sit amet, consectetur, adipisci velit, sed quia non numquam eius modi tempora incidunt ut labore et dolore magnam aliquam quaerat voluptatem. Ut enim ad minima veniam, quis nostrum exercitationem ullam corporis suscipit laboriosam, nisi ut aliquid ex ea commodi consequatur? Quis autem vel eum iure reprehenderit qui in ea voluptate velit esse quam nihil molestiae consequatur, vel illum qui dolorem eum fugiat quo voluptas nulla pariatur?
-                Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium, totam rem aperiam, eaque ipsa quae ab illo inventore veritatis et quasi architecto beatae vitae dicta sunt explicabo. Nemo enim ipsam voluptatem quia voluptas sit aspernatur aut odit aut fugit, sed quia consequuntur magni dolores eos qui ratione voluptatem sequi nesciunt. Neque porro quisquam est, qui dolorem ipsum quia dolor sit amet, consectetur, adipisci velit, sed quia non numquam eius modi tempora incidunt ut labore et dolore magnam aliquam quaerat voluptatem. Ut enim ad minima veniam, quis nostrum exercitationem ullam corporis suscipit laboriosam, nisi ut aliquid ex ea commodi consequatur? Quis autem vel eum iure reprehenderit qui in ea voluptate velit esse quam nihil molestiae consequatur, vel illum qui dolorem eum fugiat quo voluptas nulla pariatur?
-                Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium, totam rem aperiam, eaque ipsa quae ab illo inventore veritatis et quasi architecto beatae vitae dicta sunt explicabo. Nemo enim ipsam voluptatem quia voluptas sit aspernatur aut odit aut fugit, sed quia consequuntur magni dolores eos qui ratione voluptatem sequi nesciunt. Neque porro quisquam est, qui dolorem ipsum quia dolor sit amet, consectetur, adipisci velit, sed quia non numquam eius modi tempora incidunt ut labore et dolore magnam aliquam quaerat voluptatem. Ut enim ad minima veniam, quis nostrum exercitationem ullam corporis suscipit laboriosam, nisi ut aliquid ex ea commodi consequatur? Quis autem vel eum iure reprehenderit qui in ea voluptate velit esse quam nihil molestiae consequatur, vel illum qui dolorem eum fugiat quo voluptas nulla pariatur?
-                Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium, totam rem aperiam, eaque ipsa quae ab illo inventore veritatis et quasi architecto beatae vitae dicta sunt explicabo. Nemo enim ipsam voluptatem quia voluptas sit aspernatur aut odit aut fugit, sed quia consequuntur magni dolores eos qui ratione voluptatem sequi nesciunt. Neque porro quisquam est, qui dolorem ipsum quia dolor sit amet, consectetur, adipisci velit, sed quia non numquam eius modi tempora incidunt ut labore et dolore magnam aliquam quaerat voluptatem. Ut enim ad minima veniam, quis nostrum exercitationem ullam corporis suscipit laboriosam, nisi ut aliquid ex ea commodi consequatur? Quis autem vel eum iure reprehenderit qui in ea voluptate velit esse quam nihil molestiae consequatur, vel illum qui dolorem eum fugiat quo voluptas nulla pariatur?
-                Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium, totam rem aperiam, eaque ipsa quae ab illo inventore veritatis et quasi architecto beatae vitae dicta sunt explicabo. Nemo enim ipsam voluptatem quia voluptas sit aspernatur aut odit aut fugit, sed quia consequuntur magni dolores eos qui ratione voluptatem sequi nesciunt. Neque porro quisquam est, qui dolorem ipsum quia dolor sit amet, consectetur, adipisci velit, sed quia non numquam eius modi tempora incidunt ut labore et dolore magnam aliquam quaerat voluptatem. Ut enim ad minima veniam, quis nostrum exercitationem ullam corporis suscipit laboriosam, nisi ut aliquid ex ea commodi consequatur? Quis autem vel eum iure reprehenderit qui in ea voluptate velit esse quam nihil molestiae consequatur, vel illum qui dolorem eum fugiat quo voluptas nulla pariatur?
-                Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium, totam rem aperiam, eaque ipsa quae ab illo inventore veritatis et quasi architecto beatae vitae dicta sunt explicabo. Nemo enim ipsam voluptatem quia voluptas sit aspernatur aut odit aut fugit, sed quia consequuntur magni dolores eos qui ratione voluptatem sequi nesciunt. Neque porro quisquam est, qui dolorem ipsum quia dolor sit amet, consectetur, adipisci velit, sed quia non numquam eius modi tempora incidunt ut labore et dolore magnam aliquam quaerat voluptatem. Ut enim ad minima veniam, quis nostrum exercitationem ullam corporis suscipit laboriosam, nisi ut aliquid ex ea commodi consequatur? Quis autem vel eum iure reprehenderit qui in ea voluptate velit esse quam nihil molestiae consequatur, vel illum qui dolorem eum fugiat quo voluptas nulla pariatur?</Text>
+              <Layout>
+                { !scannedDataPlaces.length ? emptyCard () : undefined}
+              </Layout>
+              <Layout style={{flex: 1, paddingTop: 20}}>
+                {UserItem(scannedDataPlaces)}
+              </Layout>
+              <Layout style={{flex: 1, paddingTop: 20, alignItems: 'center'}}>
+                { isLoadMoreIconVisiblePlaces ? (isLoadingPlaces ? <Spinner size='small'/> :<Button appearance='ghost' status='info' onPress={()=> loadMoreExcept ()}>Load More</Button>) : undefined}
+              </Layout>
             </Layout>
-        </Tab>
+          </Tab>
       </TabView>
     </ScrollView>
   </View>)

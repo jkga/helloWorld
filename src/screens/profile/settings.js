@@ -32,9 +32,9 @@ export default ({navigation}) => {
 
   return (
     <View>
-      <ListItem title='Location' description='Change your permanent address' icon={()=> <Icon name='pin-outline'/>}/>
-      <ListItem title='Privacy' description='Change primary settings' icon={()=> <Icon name='lock-outline'/>}/>
+      <ListItem title='Account Type' description='Change account type' onPress={()=> navigation.navigate('AccountSettingsAccountType')} icon={()=> <Icon name='people-outline'/>}/>
+      <ListItem title='Privacy' description='Change primary settings' onPress={()=> navigation.navigate('AccountSettingsPrivacy')} icon={()=> <Icon name='lock-outline'/>}/>
       <ListItem title='Log-out' description='Sign-out to your account' icon={()=> <Icon name='person-outline'/>} onPress={()=> accountLogout (navigation)}/>
-      <ListItem title='About' description='About this application' icon={()=> <Icon name='award-outline'/>}/>
+      <ListItem title='About' description='About this application' icon={()=> <Icon name='award-outline'/>} onPress={()=> navigation.navigate('AccountSettingsAbout')}/>
     </View>)
 }

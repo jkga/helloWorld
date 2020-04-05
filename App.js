@@ -23,7 +23,7 @@ import {
   Spinner,
   TopNavigation,
   BottomNavigation, 
-  BottomNavigationTab
+  BottomNavigationTab,
 } from "@ui-kitten/components"
 
 import { NavigationContainer } from '@react-navigation/native'
@@ -56,20 +56,7 @@ const themes = {
 
 
 
-const BottomTabBar = ({ navigation, state }) => {
-  const onSelect = (index) => {
-    navigation.navigate(state.routeNames[index])
-  }
-  return (
-    <SafeAreaView>
-      <BottomNavigation selectedIndex={state.index} onSelect={onSelect}>
-        <BottomNavigationTab  icon={() => <Icon name='home-outline'/>}/>
-        <BottomNavigationTab  icon={() => <Icon name='pin-outline'/>}/>
-        <BottomNavigationTab  icon={() => <Icon name='person-outline'/>}/>
-      </BottomNavigation>
-    </SafeAreaView>
-  )
-}
+
 
 
 const App = () => {
@@ -78,7 +65,22 @@ const App = () => {
   const theme = themes[themeName].theme
   const [isLoggedIn, setLoggedInStatus] = useGlobalState('isLoggedIn')
   const [profileData, setProfileData] = useGlobalState('profileData')
-  
+
+
+  const BottomTabBar = ({ navigation, state }) => {
+    const onSelect = (index) => {
+      navigation.navigate(state.routeNames[index])
+    }
+    return (
+      <SafeAreaView>
+        <BottomNavigation selectedIndex={state.index} onSelect={onSelect}>
+          <BottomNavigationTab  icon={() => <Icon name='home-outline'/>}/>
+          <BottomNavigationTab  icon={() => <Icon name='pin-outline'/>}/>
+          <BottomNavigationTab  icon={() => <Icon name='person-outline'/>}/>
+        </BottomNavigation>
+      </SafeAreaView>
+    )
+  }  
   return (
     <>
       <IconRegistry icons={EvaIconsPack} />

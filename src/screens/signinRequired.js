@@ -7,10 +7,6 @@ import {
   Icon,
 } from "@ui-kitten/components"
 
-import {
-  View,
-} from 'react-native'
-
 export default ({navigation}) => (
   <Layout style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
     <Text category='h3' appearance='hint'>Sign-in Required</Text>

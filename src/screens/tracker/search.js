@@ -1,7 +1,7 @@
 import React, { useState } from 'react' 
 import SnackBar from 'react-native-snackbar-component'
-import useGlobalState from '../../stateManager/index'
 import People from './assets/img/people.png'
+import useGlobalState from '../../stateManager/index'
 
 import {
   Layout,
@@ -17,6 +17,7 @@ import {
   Keyboard,
   Image,
 } from 'react-native'
+
 
 const snackBar = (isVisible, callback, data = {}) => {
   data.name = data.name || ''
@@ -44,17 +45,19 @@ export default ({navigation}) => {
       <ScrollView keyboardDismissMode='interactive' keyboardShouldPersistTaps='never'  contentContainerStyle={{flexGrow : 1, alignItems: 'center', justifyContent: 'center'}}>
         <View style={{ alignItems: 'center'}}>
         <Image
-          style={{width: 300, height: 300}}
+          style={{width: 200, height: 200}}
           resizeMode="contain"
           source={People}
         />
           <Text category='h1'>HelloWorld</Text>
           <Text style={{textAlign: 'center', padding: 40}}>
-            Helps you track if you determine if you have any direct or indirect physical contact {"\n"}for this past few weeks
+            This mobile application aims to monitor physical human interaction by recording digitally all possible close human contacts and visited places 
+            with a very least minimum action and effort. This also aims to ensure that recording and tracing of all contacts wil be faster and more reliable 
+            than memory and written notes.
           </Text>
         </View>
         <View style={{justifyContent: 'center', alignItems: 'center', alignContent: 'center'}}>
-          <Layout style={{width: 400}}>
+          <Layout>
                       <Input
               size='large'
               placeholder='Enter Virtual Identification Document (VID)'
@@ -64,13 +67,19 @@ export default ({navigation}) => {
             />
           </Layout>
 
+          <Layout style={{justifyContent: 'center', alignItems: 'center', alignContent: 'center'}}>
+            <Text>-OR-</Text>
+            <Button appearance='outline' status='info' style={{marginTop: 10}}>SCAN CODE</Button>
+          </Layout>
+
         </View>
                 
       </ScrollView>
 
 
     {snackBar(isSnackSuccessVisible, () => {
-      setSnackSuccessVisibility (false)
+      //setSnackSuccessVisibility (false)
+      navigation.navigate('Me')
     },profileData)}
   </Layout>)
 }

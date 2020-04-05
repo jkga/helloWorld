@@ -7,7 +7,6 @@ import SnackBar from 'react-native-snackbar-component'
 import FirebaseDBService from '../services/firebase/account'
 import useGlobalState from '../stateManager/index'
 import { generateQRCodeKey } from '../utils/qrGenerator'
-import { View } from 'react-native'
 import trackScreen from '../screens/track'
 import env from '../../env.json'
 import {

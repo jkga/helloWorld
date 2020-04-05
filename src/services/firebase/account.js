@@ -32,6 +32,21 @@ export default class {
     })
   }
 
+  async setType (email, type = 'individual') {
+    email = this.__parseMail (email)
+    return await new Promise(async(resolve, reject) => {
+      return await this.DB.ref('users/' + email).update({
+        type,
+      }, function(error) {
+        if (error) {
+          reject (error)
+        } else {
+          resolve ()
+        }
+      })
+    })
+  }
+
   async isAccountExists (email) {
     email = this.__parseMail (email)
     return await new Promise(async(resolve, reject) => {
@@ -108,25 +123,6 @@ export default class {
       }) .catch(err => {
         reject(err)
       })     
-    })
-  }
-
-
-  async scan (email, data) {
-    email = this.__parseMail (email)
-    return await new Promise(async(resolve, reject) => {
-      return await this.DB.ref('scans/' + email).push({
-        VID: data.VID,
-        name: data.name,
-        type: data.type,
-        createdAt: data.timestamp,
-      }, function(error) {
-        if (error) {
-          reject (error)
-        } else {
-          resolve ()
-        }
-      })
     })
   }
 
